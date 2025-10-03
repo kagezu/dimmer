@@ -3,11 +3,14 @@
 #include "timer.h"
 #include "serif_18i.h"
 
+/*
 LCD lcd;
 int mode = 1;
 
 int main(void)
 {
+  SPI0_SCK.init(GPO_Max);
+
   lcd.init();
   lcd.font(serif_18i, 0, 0);
   lcd.color(White);
@@ -17,6 +20,9 @@ int main(void)
 
   int x = 0;
   while (true) {
+
+    SPI0_SCK.inv();
+    delay_ms(1000);
     // if (USER_B.get()) {
     //   while (USER_B.get());
     //   mode++;
@@ -42,5 +48,17 @@ int main(void)
     //   lcd.printf(
     //     "FPS: %.2.4q\n%u X %u X %u", fps,
     //     lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
+  }
+}
+*/
+
+int main(void)
+{
+  SPI0_SCK.init(GPO_Max);
+
+  while (true) {
+
+    SPI0_SCK.inv();
+    delay_ms(1000);
   }
 }
