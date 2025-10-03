@@ -1,6 +1,7 @@
 #include "lcd.h"
 #include "pinout.h"
 #include "timer.h"
+#include "serif_18i.h"
 
 LCD lcd;
 int mode = 1;
@@ -41,5 +42,5 @@ int main(void)
     //   lcd.printf(
     //     "FPS: %.2.4q\n%u X %u X %u", fps,
     //     lcd.max_x() + 1, lcd.max_y() + 1, RGB::len());
-    // }
   }
+}
