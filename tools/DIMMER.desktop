@@ -2,8 +2,8 @@
 Version=1.0
 Type=Application
 Name=DIMMER
-Comment=Отправить коммит
-Exec=/home/hinto/project/dimmer/tools/commit.sh /home/hinto/project/dimmer
+Comment=
+Exec=~/project/dimmer/tools/commit.sh ~/project/dimmer
 Icon=web-github
 Path=
 Terminal=true
