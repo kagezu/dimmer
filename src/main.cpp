@@ -8,26 +8,33 @@
 #include "average.h"
 #include "encoder.h"
 
+#define max(a,b) ((a)>(b)?(a):(b))
 #define AVG_FACTOR 1
 
 ADC adc;
 LCD lcd;
-int mode = 1;
 
 Pin<PC, 3> CAP_RST;
 Encoder enc;
 
 
-Average<uint16_t, AVG_FACTOR> a1;
+Average<uint16_t, AVG_FACTOR + 4> a1;
 Average<uint16_t, AVG_FACTOR> a2;
 
 volatile uint8_t f = 0;
+
 volatile uint16_t t1;
-volatile uint16_t t11;
 volatile uint16_t t2;
 
 volatile uint16_t v1;
 volatile uint16_t v2;
+
+uint16_t current(uint16_t arg)
+{
+  if (arg == 0) return 0;
+  if (arg > 30) return 140 + (arg << 1) + (arg >> 1) + (arg >> 3) + (arg >> 4) + (arg >> 6) + (arg >> 7) + (arg >> 8);
+  return 50 + (arg << 1) + arg;
+}
 
 int main(void)
 {
@@ -58,13 +65,12 @@ int main(void)
   a2 = t2;
 
   while (true) {
-    lcd.printf(P("\fT1: %u      \n"), a1.value >> 2);
+    uint16_t mv = max(v1, v2);
+    lcd.printf(P("\fT1: %u      \n"), a1.value >> 6);
     lcd.printf(P("T2: %u      \n"), a2.value >> 2);
-    lcd.printf(P("%%: %.2.4q      \n"), ((uint32_t)a1.value * 1600) / a2.value);
-    lcd.printf(P("Value: %u %u      \n"), v1, v2);
-    lcd.printf(P("t1: %u   \n"), t1);
-    lcd.printf(P("t2: %u   \n"), t2);
-    lcd.printf(P("Encoder: %c %u       \n"),
+    lcd.printf(P("AVG: %u      \n"), current(mv));
+    lcd.printf(P("RST: %u      \n"), current((mv << 1) + (mv >> 1) + (mv >> 3) + (mv >> 4) + (mv >> 5)));
+    lcd.printf(P("\nEncoder: %c %u       \n"),
       enc.is_push() ? '+' : '-', enc.count);
   }
 }
@@ -78,7 +84,7 @@ ISR(INT0_vect)
   if (f) { v1 = adc.value(); f = 0; }
   else { v2 = adc.value(); f = 1; }
 
-  CAP_RST.init(GPO_Max); // Сброс конденсатора
+  if (enc.is_push()) CAP_RST.init(GPO_Max); // Сброс конденсатора
 }
 
 ISR(INT1_vect)
