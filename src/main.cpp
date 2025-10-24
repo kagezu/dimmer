@@ -29,11 +29,25 @@ volatile uint16_t t2;
 volatile uint16_t v1;
 volatile uint16_t v2;
 
+#define CUR_A     2.714f
+#define CUR_R     7.384f
+#define CUR_AR    2.7268f
+#define CUR_A_MIN 30
+#define CUR_R_MIN 11
+
+volatile uint8_t reset = 0;
+
 uint16_t current(uint16_t arg)
 {
   if (arg == 0) return 0;
-  if (arg > 30) return 140 + (arg << 1) + (arg >> 1) + (arg >> 3) + (arg >> 4) + (arg >> 6) + (arg >> 7) + (arg >> 8);
-  return 50 + (arg << 1) + arg;
+  if (reset) {
+    if (arg > CUR_R_MIN) return 140 + (arg - CUR_R_MIN) * CUR_R;
+    return 50 + arg * 3 * CUR_AR;
+  }
+  else {
+    if (arg > CUR_A_MIN) return 140 + (arg - CUR_A_MIN) * CUR_A;
+    return 47 + arg * 3;
+  }
 }
 
 int main(void)
@@ -65,11 +79,10 @@ int main(void)
   a2 = t2;
 
   while (true) {
-    uint16_t mv = max(v1, v2);
     lcd.printf(P("\fT1: %u      \n"), a1.value >> 6);
     lcd.printf(P("T2: %u      \n"), a2.value >> 2);
-    lcd.printf(P("AVG: %u      \n"), current(mv));
-    lcd.printf(P("RST: %u      \n"), current((mv << 1) + (mv >> 1) + (mv >> 3) + (mv >> 4) + (mv >> 5)));
+    lcd.printf(P("Value: %u      \n"), max(v1, v2));
+    lcd.printf(P("Current: %u      \n"), current(max(v1, v2)));
     lcd.printf(P("\nEncoder: %c %u       \n"),
       enc.is_push() ? '+' : '-', enc.count);
   }
@@ -84,7 +97,7 @@ ISR(INT0_vect)
   if (f) { v1 = adc.value(); f = 0; }
   else { v2 = adc.value(); f = 1; }
 
-  if (enc.is_push()) CAP_RST.init(GPO_Max); // Сброс конденсатора
+  if (reset) CAP_RST.init(GPO_Max); // Сброс конденсатора
 }
 
 ISR(INT1_vect)
@@ -99,4 +112,6 @@ ISR(TIMER0_OVF_vect)
 {
   sei();
   enc.scan();
+  if (enc.is_push()) reset = 1;
+  else reset = 0;
 }
