@@ -9,17 +9,18 @@
 #include "encoder.h"
 
 #define max(a,b) ((a)>(b)?(a):(b))
-#define AVG_FACTOR 1
+#define AVG_FACTOR 5
 
 ADC adc;
 LCD lcd;
 
+Pin<PB, 1> PWM;
 Pin<PC, 3> CAP_RST;
 Encoder enc;
 
 
-Average<uint16_t, AVG_FACTOR + 4> a1;
-Average<uint16_t, AVG_FACTOR> a2;
+Average<uint16_t, AVG_FACTOR> a1;
+Average<uint32_t, AVG_FACTOR> a2;
 
 volatile uint8_t f = 0;
 
@@ -56,11 +57,16 @@ int main(void)
   EIMSK = 0b11;
 
   T0_DIV_64;
-  // T0_CTC;
-  // OCR0A = 15; // 1ms
   T0_OVF_ON;
 
   T1_DIV_8;
+  T1_FAST_PWM_CUSTOM;
+  T1_OC1A_PWM_INV;
+  T1_COMPA_ON;
+  ICR1 = -1;
+  OCR1A = 20000;
+  PWM.init(GPO_Max);
+  enc.count = 199;
 
   CAP_RST.init(GP_Float);
   CAP_RST.clr();
@@ -80,7 +86,7 @@ int main(void)
 
   while (true) {
     lcd.printf(P("\fT1: %u      \n"), a1.value >> 6);
-    lcd.printf(P("T2: %u      \n"), a2.value >> 2);
+    lcd.printf(P("T2: %u      \n"), (u32)(a2.value >> 6));
     lcd.printf(P("Value: %u      \n"), max(v1, v2));
     lcd.printf(P("Current: %u      \n"), current(max(v1, v2)));
     lcd.printf(P("\nEncoder: %c %u       \n"),
@@ -91,20 +97,27 @@ int main(void)
 ISR(INT0_vect)
 {
   t2 = TCNT1;
-  TCNT1 = 0;
+  TCNT1 = -1;
   a2 += t2;
 
   if (f) { v1 = adc.value(); f = 0; }
   else { v2 = adc.value(); f = 1; }
 
   if (reset) CAP_RST.init(GPO_Max); // Сброс конденсатора
+  OCR1A = enc.count * 100;
 }
 
 ISR(INT1_vect)
 {
   t1 = TCNT1;
+  TCNT1 = t1 >> 1;
   a1 += t1;
 
+}
+
+ISR(TIMER1_COMPA_vect)
+{
+  delay_us(10);
   CAP_RST.init(GP_Float);
 }
 
