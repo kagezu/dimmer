@@ -4,36 +4,33 @@
 #include "average.h"
 #include "encoder.h"
 #include "accel.h"
+#include "controller.h"
+#include "system_5x7.h"
 
 #define max(a,b) ((a)>(b)?(a):(b))
-#define E_HISTORY 100
 #define MAX_CURRENT 5000
 
 ADC adc;
 SPI spi;
 
-Pin<PB, 1> PWM;
-Pin<PC, 3> CAP;
-
 Port<PC, 0b111> DIGIT;
 Pin<PD, 4> USER;
 
 Encoder enc;
+Controller ctrl;
 
 ///////////////////////////////////////////////////////////////////////////////
-
-volatile int16_t energy_mod = 0;
-volatile int32_t energy_sum = 0;
-
-volatile int16_t energy_last[E_HISTORY] = {};
-volatile uint8_t index = 0;
 
 volatile int8_t push = 0;
 volatile int8_t block = 0;
 volatile int16_t digit = 1;
 volatile int16_t power = 0;
 
-volatile int16_t delay = 0;
+volatile int16_t encode = 0;
+
+///////////////////////////////////////////////////////////////////////////////
+
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -92,10 +89,6 @@ uint16_t current(uint16_t arg)
 
 int main(void)
 {
-  PWM.init(GPO_Max);
-  PWM.clr();
-  CAP.init(GP_Float);
-  CAP.clr();
   USER.init(GP_Float);
   DIGIT.init(GPO_Max);
   DIGIT.set(0b111);
@@ -113,13 +106,14 @@ int main(void)
   spi.begin();
 
   sei();
+  ctrl.on();
 
   while (true) {
-    if (block) break;
-    if (delay) print(power);
-    else print(energy_sum / (E_HISTORY * 10));
+    if (ctrl.is_stop()) break;
+    if (encode) print(power);
+    else print(ctrl.get_power());
     char i = 100;
-    while (i-- && !delay) delay_ms(5);
+    while (i-- && !encode) delay_ms(5);
   }
 
   out[0] = out[1] = out[2] = 63;
@@ -128,32 +122,22 @@ int main(void)
 
 ISR(INT0_vect)
 {
-  uint16_t value = current(adc.value());
+  uint16_t value = adc.value();
+  value = current(value);
+
   if (value > MAX_CURRENT) { // Блокировка
-    block = 1;
+    ctrl.stop();
     out[2] = 63;
     out[1] = 63;
     out[0] = 63;
   }
-  CAP.init(GPO_Max);                          // Сброс конденсатора
-  if (block) return;
 
-  int16_t energy = (value << 1) + (value >> 2); // I * 225V / 100 = I * 2.25 mJ
-  int16_t energy_target = power * 10;           // mJ на полупериод
-  energy_mod += energy - energy_target;         // Перерасход энергии mJ / полупериод
-
-  if (energy_mod < 0) energy_mod = 0;
-  if (energy_mod < energy_target) PWM.set();  // Открыть симистор
-
-  energy_sum += energy - energy_last[index];
-  energy_last[index++] = energy;
-  if (index == E_HISTORY) index = 0;
+  ctrl.step(value);
 }
 
 ISR(INT1_vect)
 {
-  CAP.init(GP_Float); // Начать накопление
-  PWM.clr();          // Отключить открывающий ток
+  ctrl.release();
 }
 
 ISR(TIMER0_OVF_vect)
@@ -168,6 +152,7 @@ ISR(TIMER0_OVF_vect)
   power += inc * digit;
   if (power < 0) power = 0;
   if (power > 1000) power = 1000;
+  ctrl.set_power(power);
 
   if (out_i++ == 2) out_i = 0;
   DIGIT.set(0b111);
@@ -175,6 +160,6 @@ ISR(TIMER0_OVF_vect)
   spi.wait();
   DIGIT.clr(1 << out_i);
 
-  if (inc) delay = 1000;
-  if (delay) delay--;
+  if (inc) encode = 1000;
+  if (encode) encode--;
 }
