@@ -21,15 +21,49 @@ Controller ctrl;
 
 ///////////////////////////////////////////////////////////////////////////////
 
-volatile int8_t block = 0;
 volatile int16_t digit = 1;
 volatile int16_t power = 0;
-volatile uint16_t raw = 0;
-
 volatile int16_t encode = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 
+#define MODE_1  0
+#define MODE_4  1
+#define MODE_C  2
+
+volatile int8_t mode = 0;
+volatile int8_t tick = 0;
+volatile int16_t max_value = 0;
+
+void print_mode()
+{
+  switch (mode) {
+    case MODE_1:
+      out.printf(P("\f1 ="));
+      break;
+    case MODE_4:
+      out.printf(P("\f4 <"));
+      break;
+    case MODE_C:
+      out.printf(P("\fC@="));
+      break;
+  }
+}
+
+void set_mode()
+{
+  switch (mode) {
+    case MODE_1:
+      ctrl.mode_x4(false);
+      break;
+    case MODE_4:
+      ctrl.mode_x4(true);
+      break;
+    case MODE_C:
+      ctrl.mode_x4(true);
+      break;
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -46,7 +80,6 @@ int main(void)
   delay_ms(100);
   adc.init(6, ADC_DIV_16);
   adc.start();
-  // ctrl.on();
 
   sei();
 
@@ -54,12 +87,13 @@ int main(void)
     if (ctrl.is_stop()) break;
     if (ctrl.is_on()) {
       if (encode) out.number(power);
-      else out.number(ctrl.get_power());
+      else {
+        if (mode == MODE_C) out.number(temperature(max_value));
+        else out.number(ctrl.get_power());
+      }
     }
-    else {
-      if (ctrl.is_x4()) out.printf(P("\f4 <"));
-      else out.printf(P("\f1 ="));
-    }
+    else print_mode();
+
     char i = 100;
     while (i-- && !encode) delay_ms(5);
   }
@@ -70,17 +104,26 @@ int main(void)
 
 ISR(INT0_vect)
 {
-  uint16_t value = adc.value(); // 0 - 1023
-  if (value > 1000) ctrl.stop();// Блокировка
+  int16_t value = adc.value();    // 0 - 1023
+  if (value >= 1023) ctrl.stop(); // Блокировка
   value = current(value);
   if (ctrl.is_x4()) value >>= 2;
-  else if (value > MAX_CURRENT) ctrl.stop();  // Блокировка
+  if (mode == MODE_C) {
+    if (max_value < value) max_value = value;
+    if (power <= temperature(max_value)) {
+      ctrl.set_power((power >> 2) - 10);
+      max_value -= 10;
+      if (max_value < 0) max_value = 0;
+    }
+  }
+
   ctrl.step(value);
 }
 
 ISR(INT1_vect)
 {
   ctrl.release();
+  ctrl.set_power(power);
 }
 
 volatile int8_t key = 0;
@@ -104,10 +147,15 @@ ISR(TIMER0_OVF_vect)
   if (ctrl.is_on()) {
     power += inc * digit;
     if (power < 0) power = 0;
-    if (power > 1000) power = 1000;
-    ctrl.set_power(power);
+    if (power > 200 && mode == MODE_C) power = 200;
+    else if (power > 1000) power = 1000;
   }
-  else if (inc) ctrl.mode_x4(!ctrl.is_x4());
+  else if (inc) {
+    mode += inc;
+    if (mode < MODE_1) mode = MODE_C;
+    if (mode > MODE_C) mode = MODE_1;
+    set_mode();
+  }
 
   out.view();
 

@@ -1,8 +1,6 @@
 #pragma once
 #include "type/int.h"
 
-#define MAX_CURRENT 6000
-
 #define C_M1  32
 #define C_A1  243
 #define C_B1  6.9412f
@@ -24,4 +22,16 @@ uint16_t current(uint16_t arg)
   if (arg > C_M1 && arg <= C_M2) return C_A1 + C_B1 * arg;
   if (arg > C_M2) return C_A2 + C_B2 * arg;
   return 0x1FFF;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Возвращает Температуру в C°
+int16_t temperature(uint16_t arg)
+{
+  if (arg <= 800) return 0;                       // <30
+  if (arg <= 1500) return 30 + (arg - 900) / 15;  // <70
+  if (arg <= 3300) return 70 + (arg - 1500) / 30; // <130
+  if (arg <= 5700) return 130 + (arg - 3300) / 40;// <190
+  return 190 + (arg - 5700) / 27;                 // ~200
 }

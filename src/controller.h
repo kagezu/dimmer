@@ -87,7 +87,11 @@ public:
   void pause() { status |= PAUSE; }
   void mode_x4(bool mode = true) { status = (status & ~MODE_X4) | (mode ? MODE_X4 : 0); }
 
-  u16 get_power() { return sum >> 10; }
+  u16 get_power() { return sum >> 10; } // /1024
 
-  void set_power(s16 power) { target = power * 10 + (power >> 2); }
+  void set_power(s16 power)
+  {
+    if (power > 0) target = power * 10 + (power >> 2);  // x10.25
+    else target = 0;
+  }
 };
