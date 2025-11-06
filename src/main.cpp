@@ -46,14 +46,20 @@ int main(void)
   delay_ms(100);
   adc.init(6, ADC_DIV_16);
   adc.start();
-  ctrl.on();
+  // ctrl.on();
 
   sei();
 
   while (true) {
     if (ctrl.is_stop()) break;
-    if (encode) out.number(power);
-    else out.number(ctrl.get_power());
+    if (ctrl.is_on()) {
+      if (encode) out.number(power);
+      else out.number(ctrl.get_power());
+    }
+    else {
+      if (ctrl.is_x4()) out.printf(P("\f4 <"));
+      else out.printf(P("\f1 ="));
+    }
     char i = 100;
     while (i-- && !encode) delay_ms(5);
   }
@@ -64,10 +70,11 @@ int main(void)
 
 ISR(INT0_vect)
 {
-  uint16_t value = adc.value();
+  uint16_t value = adc.value(); // 0 - 1023
+  if (value > 1000) ctrl.stop();// Блокировка
   value = current(value);
-
-  if (value > MAX_CURRENT) ctrl.stop(); // Блокировка
+  if (ctrl.is_x4()) value >>= 2;
+  else if (value > MAX_CURRENT) ctrl.stop();  // Блокировка
   ctrl.step(value);
 }
 
@@ -80,17 +87,27 @@ volatile int8_t key = 0;
 
 ISR(TIMER0_OVF_vect)
 {
-  if (USER.get()) key = 1;
-  else if (key) { key = 0; power = 0; asm volatile("jmp 0"); }
+  if (USER.get()) {
+    key = 1;
+    if (ctrl.is_stop()) asm volatile("jmp 0");
+  }
+  else if (key) {
+    key = 0;
+    if (ctrl.is_on()) ctrl.off();
+    else ctrl.on();
+  }
 
   if (enc.is_push())  digit *= 10;
   if (digit == 1000) digit = 1;
 
   int16_t inc = enc.scan();
-  power += inc * digit;
-  if (power < 0) power = 0;
-  if (power > 1000) power = 1000;
-  ctrl.set_power(power);
+  if (ctrl.is_on()) {
+    power += inc * digit;
+    if (power < 0) power = 0;
+    if (power > 1000) power = 1000;
+    ctrl.set_power(power);
+  }
+  else if (inc) ctrl.mode_x4(!ctrl.is_x4());
 
   out.view();
 

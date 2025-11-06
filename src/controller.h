@@ -8,7 +8,8 @@
 #define POWER   0x04  // Включено управление мощностью
 #define PULSE   0x08  // Режим 1 импульса
 #define PAUSE   0x10  // Пауза
-#define REJECT  0x20  // Аварийный режим
+#define MODE_X4 0x20  // Точный режим
+#define REJECT  0x40  // Аварийный режим
 
 Pin<PB, 1> PWM;
 Pin<PC, 3> CAP;
@@ -44,8 +45,9 @@ public:
     CAP.init(GPO_Max);  // Сброс конденсатора
     status &= ~CAP_ON; // Сброс статуса конденсатора
 
-    // int16_t energy = (current << 1) + (current >> 2); // I * 225V / 100 [mJ]
-    int16_t energy = (current << 1) + (current >> 2) + (current >> 5); // I * 2.23 * 1.024 [mJ]
+    // int16_t energy = (current << 1) + (current >> 2) + (current >> 5); // I * 2.28 [mJ]
+    int16_t energy = (current << 1) + (current >> 2) + (current >> 4); // I * 2.31 [mJ]
+    // int16_t energy = (current << 1) + (current >> 2) + (current >> 3); // I * 2.37 [mJ]
     mod += energy - target;
     sum += energy - buffer[ptr];
     buffer[ptr++] = energy;
@@ -74,13 +76,16 @@ public:
 
   bool is_open() { return status & KEY_ON; }
   bool is_cap() { return status & CAP_ON; }
+  bool is_on() { return status & POWER; }
   bool is_stop() { return status & REJECT; }
+  bool is_x4() { return status & MODE_X4; }
 
   void stop() { status |= REJECT; }
   void pulse() { status |= PULSE; }
   void on() { status |= POWER; }
   void off() { status &= ~POWER; target = 0; }
   void pause() { status |= PAUSE; }
+  void mode_x4(bool mode = true) { status = (status & ~MODE_X4) | (mode ? MODE_X4 : 0); }
 
   u16 get_power() { return sum >> 10; }
 
