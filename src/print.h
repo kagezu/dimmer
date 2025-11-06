@@ -55,7 +55,7 @@ public:
 
   void number(u16 num)
   {
-    if (num > 999) printf(P("\fA00"), num);
+    if (num > 999) printf(P("\fA  "));
     else printf(P("\f%3u"), num);
   }
 
@@ -80,11 +80,12 @@ public:
 
   void view()
   {
-    if (digit++ == 2) digit = 0;
     DIGIT.set(0b111);
     spi.send(buffer[digit]);
     spi.wait();
     DIGIT.clr(1 << digit);
+    digit++;
+    if (digit > 2) digit = 0;
   }
 
 };

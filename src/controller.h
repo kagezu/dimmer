@@ -40,8 +40,9 @@ public:
 
   void step(s16 current)
   {
+    // PWM.clr();    // Отключить открывающий ток
     CAP.init(GPO_Max);  // Сброс конденсатора
-    status &= ~(CAP_ON | KEY_ON); // Сброс статуса симистора и конденсатора
+    status &= ~CAP_ON; // Сброс статуса конденсатора
 
     // int16_t energy = (current << 1) + (current >> 2); // I * 225V / 100 [mJ]
     int16_t energy = (current << 1) + (current >> 2) + (current >> 5); // I * 2.23 * 1.024 [mJ]
@@ -51,23 +52,24 @@ public:
     if (ptr == E_BUFFER) ptr = 0;
     if (mod < 0) mod = 0;
     if (status & REJECT) return;    // Аварийный режим - безусловная блокировка
-    if (status & PULSE) goto pulse; // Одиночный импульс
+    if (status & PULSE) goto pulse0; // Одиночный импульс
     if (status & PAUSE) return;     // Пауза
     if (!(status & POWER)) return;  // Если выключено
     if (mod >= target) return;      // Накопленная энергия выше среднего
 
-  pulse:
+  pulse0:
     PWM.set();  // Открыть симистор
     status = (status & ~PULSE) | KEY_ON;  // Сбросить флаг импульса и открыть симистор
   }
 
   void release()
   {
-    PWM.clr(); // Отключить открывающий ток
-    if (status & KEY_ON) {
+    if (is_open()) {
       CAP.init(GP_Float); // Начать накопление, если симистор открыт
-      status |= CAP_ON;
+      status = (status & ~KEY_ON) | CAP_ON;
     }
+    delay_ms(1);  // 10%
+    PWM.clr();    // Отключить открывающий ток
   }
 
   bool is_open() { return status & KEY_ON; }
