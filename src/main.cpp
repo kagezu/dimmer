@@ -50,21 +50,6 @@ void print_mode()
   }
 }
 
-void set_mode()
-{
-  switch (mode) {
-    case MODE_1:
-      ctrl.mode_x4(false);
-      break;
-    case MODE_4:
-      ctrl.mode_x4(true);
-      break;
-    case MODE_C:
-      ctrl.mode_x4(true);
-      break;
-  }
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 int main(void)
@@ -107,12 +92,11 @@ ISR(INT0_vect)
   int16_t value = adc.value();    // 0 - 1023
   if (value >= 1023) ctrl.stop(); // Блокировка
   value = current(value);
-  if (ctrl.is_x4()) value >>= 2;
   if (mode == MODE_C) {
     if (max_value < value) max_value = value;
     if (power <= temperature(max_value)) {
       ctrl.set_power((power >> 2) - 10);
-      max_value -= 10;
+      max_value--;
       if (max_value < 0) max_value = 0;
     }
   }
@@ -154,7 +138,8 @@ ISR(TIMER0_OVF_vect)
     mode += inc;
     if (mode < MODE_1) mode = MODE_C;
     if (mode > MODE_C) mode = MODE_1;
-    set_mode();
+    if (mode == MODE_4) ctrl.mode_x4();
+    else ctrl.mode_x4(false);
   }
 
   out.view();

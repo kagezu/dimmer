@@ -45,9 +45,18 @@ public:
     CAP.init(GPO_Max);  // Сброс конденсатора
     status &= ~CAP_ON; // Сброс статуса конденсатора
 
+    if (is_x4()) current >>= 2;
     // int16_t energy = (current << 1) + (current >> 2) + (current >> 5); // I * 2.28 [mJ]
-    int16_t energy = (current << 1) + (current >> 2) + (current >> 4); // I * 2.31 [mJ]
+    // int16_t energy = (current << 1) + (current >> 2) + (current >> 4); // I * 2.31 [mJ]
     // int16_t energy = (current << 1) + (current >> 2) + (current >> 3); // I * 2.37 [mJ]
+
+    int16_t energy =
+      current +
+      (current >> 1) +
+      (current >> 3) +
+      (current >> 5) +
+      (current >> 6); // I / 1.4142 * 2.36 = I * 1.671 [mJ]
+
     mod += energy - target;
     sum += energy - buffer[ptr];
     buffer[ptr++] = energy;
