@@ -39,13 +39,13 @@ void print_mode()
 {
   switch (mode) {
     case MODE_1:
-      out.printf(P("\fP.="));
+      out.printf(P("\fP, "));
       break;
     case MODE_4:
-      out.printf(P("\fP,<"));
+      out.printf(P("\fP: "));
       break;
     case MODE_C:
-      out.printf(P("\fC@="));
+      out.printf(P("\fC@ "));
       break;
   }
 }

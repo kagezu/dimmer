@@ -17,7 +17,7 @@ uint8_t table[] = {
   0b1111000,  // 7
   0b0000000,  // 8
   0b0010000,  // 9
-  0b1111111,  // :
+  0b1101011,  // : нижний 2
   0b1111111,  // ;
   0b0110111,  // <
   0b1110110,  // =
@@ -39,7 +39,7 @@ uint8_t table[] = {
   0b1001001,  // M
   0b1001001,  // N
   0b1000000,  // O
-  0b1111100,  // P
+  0b0001100,  // P
 };
 
 Port<PC, 0b111> DIGIT;
@@ -83,7 +83,7 @@ public:
         break;
 
       default:
-        buffer[buffer_index--] = table[ch - '-'];
+        buffer[buffer_index--] = table[ch - ','];
     }
 
     if (buffer_index > 2) buffer_index = 2;
