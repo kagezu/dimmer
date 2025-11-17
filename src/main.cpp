@@ -39,10 +39,10 @@ void print_mode()
 {
   switch (mode) {
     case MODE_1:
-      out.printf(P("\f1 ="));
+      out.printf(P("\fP.="));
       break;
     case MODE_4:
-      out.printf(P("\f4 <"));
+      out.printf(P("\fP,<"));
       break;
     case MODE_C:
       out.printf(P("\fC@="));
@@ -90,7 +90,7 @@ int main(void)
 ISR(INT0_vect)
 {
   int16_t value = adc.value();    // 0 - 1023
-  if (value >= 1023) ctrl.stop(); // Блокировка
+  if (value >= 1000) ctrl.stop(); // Блокировка > 7A
   value = current(value);
   if (mode == MODE_C) {
     if (max_value < value) max_value = value;
@@ -131,7 +131,7 @@ ISR(TIMER0_OVF_vect)
   if (ctrl.is_on()) {
     power += inc * digit;
     if (power < 0) power = 0;
-    if (power > 200 && mode == MODE_C) power = 200;
+    if (power > 210 && mode == MODE_C) power = 210;
     else if (power > 1000) power = 1000;
   }
   else if (inc) {

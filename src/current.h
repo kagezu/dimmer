@@ -29,9 +29,7 @@ uint16_t current(uint16_t arg)
 // Возвращает Температуру в C°
 int16_t temperature(uint16_t arg)
 {
-  if (arg <= 900) return 0;                       // <30
-  if (arg <= 1500) return 30 + (arg - 900) / 15;  // <70
-  if (arg <= 3300) return 70 + (arg - 1500) / 30; // <130
-  if (arg <= 5700) return 130 + (arg - 3300) / 40;// <190
-  return 190 + (arg - 5700) / 27;                 // ~200
+  if (arg <= 900) return 30;                    // <30
+  if (arg <= 1500) return 30 + (arg - 900) / 15;// <70
+  return 70 + ((arg - 1500) >> 5);              // >70
 }
