@@ -9,6 +9,10 @@
 #define C_A2  251
 #define C_B2  6.8236f
 
+#define BUFF_LEN  20
+
+uint16_t current_buffer[BUFF_LEN] = {};
+uint8_t current_head = 0;
 
 uc16 cur_raw[] = {
   0,132,155,173,188,200,212,224,236,248,260,271,281,293,304,312,319,
@@ -18,6 +22,20 @@ uc16 cur_raw[] = {
 // Возвращает ток в мА
 uint16_t current(uint16_t arg)
 {
+  /////////////////////////////////////////////////////////////////////////////
+  // filter
+
+  current_buffer[current_head++] = arg;
+  if (current_head == BUFF_LEN)
+    current_head = 0;
+
+  if (arg > 0)
+    for (u8 i = 0; i < BUFF_LEN; i++)
+      if (current_buffer[i] > arg)
+        arg = current_buffer[i];
+
+  /////////////////////////////////////////////////////////////////////////////
+
   if (arg <= C_M1) return cur_raw[arg];
   if (arg > C_M1 && arg <= C_M2) return C_A1 + C_B1 * arg;
   if (arg > C_M2) return C_A2 + C_B2 * arg;

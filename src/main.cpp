@@ -33,7 +33,7 @@ volatile int16_t encode = 0;
 
 volatile int8_t mode = 0;
 volatile int8_t tick = 0;
-volatile int16_t max_value = 0;
+volatile int16_t last_value = 0;
 
 void print_mode()
 {
@@ -73,7 +73,7 @@ int main(void)
     if (ctrl.is_on()) {
       if (encode) out.number(power);
       else {
-        if (mode == MODE_C) out.number(temperature(max_value));
+        if (mode == MODE_C) out.number(temperature(last_value));
         else out.number(ctrl.get_power());
       }
     }
@@ -93,11 +93,11 @@ ISR(INT0_vect)
   if (value >= 1000) ctrl.stop(); // Блокировка > 7A
   value = current(value);
   if (mode == MODE_C) {
-    if (max_value < value) max_value = value;
-    if (power <= temperature(max_value)) {
+    if (last_value < value) last_value = value;
+    if (power <= temperature(last_value)) {
       ctrl.set_power((power >> 2) - 10);
-      max_value--;
-      if (max_value < 0) max_value = 0;
+      last_value--;
+      if (last_value < 0) last_value = 0;
     }
   }
 
